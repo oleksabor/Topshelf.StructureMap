@@ -9,13 +9,24 @@ namespace Topshelf.StructureMap
 
         public static ServiceConfigurator<T> ConstructUsingStructureMap<T>(this ServiceConfigurator<T> configurator) where T : class {
 
-            if (typeof(T).GetInterfaces()?.Length > 0 && typeof(ServiceControl).IsAssignableFrom(typeof(T))) {
+			var hasInterfaces = typeof(T).GetInterfaces()?.Length > 0;
+
+			if (hasInterfaces && IsAssignable<ServiceControl, T>()) {
                 configurator.WhenStarted((service, control) => ((ServiceControl)service).Start(control));
                 configurator.WhenStopped((service, control) => ((ServiceControl)service).Stop(control));
             }
 
-            configurator.ConstructUsing(GetFactory<T>());
+			if (hasInterfaces && IsAssignable<ServiceSessionChange, T>()) {
+				configurator.WhenSessionChanged((service, control, args) => ((ServiceSessionChange)service).SessionChange(control, args));
+			}
+
+			configurator.ConstructUsing(GetFactory<T>());
             return configurator;
         }
+
+		static bool IsAssignable<TInterface, TService>()
+		{
+			return typeof(TInterface).IsAssignableFrom(typeof(TService));
+		}
     }
 }
